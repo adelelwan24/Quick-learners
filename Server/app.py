@@ -1,27 +1,19 @@
-# Install Cohere for embeddings, Umap to reduce embeddings to 2 dimensions, 
-# Altair for visualization, Annoy for approximate nearest neighbor search
-# pip install cohere umap-learn altair datasets tqdm annoy
-
 import cohere
+import pinecone
 import numpy as np
 
-
-
 from flask import Flask, render_template, request, Response, flash, redirect, url_for, jsonify
-
+from flask_moment import Moment
 import os
-import json
+
+from models import *
+
 # Paste your API key here. Remember to not share publicly
-
-
 COHERE_API_KEY = 'rImV4bTb4stL21jKzhFZi6PNF5a4Sv5g7FKulaSW'
 
 # Create and retrieve a Cohere API key from os.cohere.ai
-
-
 co = cohere.Client(COHERE_API_KEY)
 
-import pinecone
 
 PIENCONE_API_KEY = "3d2006de-95b3-4e7d-9ec1-54133c34001e"
 pinecone.init(PIENCONE_API_KEY, environment='us-west1-gcp')
@@ -30,7 +22,15 @@ index_name = 'first-index'
 # connect to index
 index = pinecone.Index(index_name)
 
+
+
 app = Flask(__name__)
+app.config.from_object('config')
+moment = Moment(app)
+db.init_app(app)
+
+# with app.app_context():
+#     db.create_all()
 
 
 @app.route('/query', methods=["POST"])
@@ -41,14 +41,13 @@ def query():
     query = data['query']
     print(query)
     print('========================================================================')
-# create the query embedding
+    # create the query embedding
     xq = co.embed(
         texts=[query],
         model='small',
         truncate='LEFT'
     ).embeddings[0]
 
-    # print(xq)
     print(np.array(xq).shape)
 
     # query, returning the top 5 most similar results
@@ -58,8 +57,8 @@ def query():
     for match in res['matches']:
         print(f"{match['score']:.2f}: {match['metadata']['text']}")
         dic = {}
-        dic['video_id']= match['metadata']['video_id']
-        dic['start']= match['metadata']['start']
+        dic['video_id'] = match['metadata']['video_id']
+        dic['start'] = match['metadata']['start']
         dic['text'] = match['metadata']['text']
         data.append(dic)
     print(data)
