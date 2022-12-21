@@ -29,8 +29,9 @@ app.config.from_object('config')
 moment = Moment(app)
 db.init_app(app)
 
-# with app.app_context():
-#     db.create_all()
+with app.app_context():
+    db.create_all()
+    print("All tables are created")
 
 
 @app.route('/query', methods=["POST"])
@@ -65,6 +66,42 @@ def query():
 
     return jsonify(data)
     
+
+@app.route('/api/create_user', methods=["POST"])
+def insert_user():
+    data = request.form
+    try:
+        new = User(
+        name = data["name"],
+        user_name = data["user_name"],
+        email = data["email"],
+        password = data["password"]
+        )
+        print(new)
+        db.session.add(new)
+        db.session.commit()
+        print('============================================= mission success =============================================')
+    except:
+        db.session.rollback()
+        print('============================================= mission failed =============================================')
+
+
+    return jsonify(object_as_dict(new))
+    
+
+@app.route('/api/get_users')
+def get_users():
+    try:
+        users = User.query.all()
+        print('============================================= mission success =============================================')
+    except:
+        db.session.rollback()
+        print('============================================= mission failed =============================================')
+
+
+    return jsonify([object_as_dict(new) for new in users])
+
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 2000))
