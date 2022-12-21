@@ -5,7 +5,7 @@ import QueryAnswer from "../../Components/Content/QueryAnswer/QueryAnswer";
 const Search = () => {
     const location = useLocation();
     const query = location.state.query
-    const res = location.state.res
+    const res = location.state.resJson
     console.log(location.state)
     return ( 
         <div className="container-me">
@@ -16,8 +16,11 @@ const Search = () => {
                 <SideBar/>
             </div>
             <div className="content">
-                <h6>{query}</h6>
-                {res.map(ress => <QueryAnswer id={ress.video_id} start={ress.start}/>)}
+                <div className="post-me">
+                    <h5 >Query: {query}</h5>
+                </div>
+                
+                { res && res.map(ress => <QueryAnswer id={ress.video_id} start={ress.start} text={ress.text}/>)}
 
             </div>
         </div>

@@ -12,7 +12,9 @@ async function Postmethod(url,data) {
     if (response.ok){
         err = false;
     }
+    console.log(response)
     let resJson = await response.json();
+    console.log(resJson)
     return {err, resJson}
 
 }
