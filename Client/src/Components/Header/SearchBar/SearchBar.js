@@ -1,13 +1,37 @@
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import Postmethod from "../../../Methods/PostMethod";
+
 const SearchBar = () => {
+    const navigate = useNavigate();
+    
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        let {err, res} = await Postmethod('/query',{query})
+        console.log(err);
+        navigate('/search', {state : {query , res}});
+    }
+
+    const [query , setQuery] = useState("");
     return ( 
-    <div className="input-group ">
-        <input type="text" className="form-control" placeholder="Search in videos" aria-label="Search in videos" aria-describedby="basic-addon2"/>
-        <div className="input-group-append">
-            <button className="btn btn-outline-secondary" type="button">Search</button>
+    <form onSubmit={handleSubmit} id="queryform">
+        <div className="input-group ">
+            <input 
+            type="text" 
+            className="form-control" 
+            placeholder="Search in videos" 
+            aria-label="Search in videos" 
+            aria-describedby="basic-addon2"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            required
+            />
+            <div className="input-group-append">
+                <button className="btn btn-outline-secondary" type="submit">Search</button>
+            </div>
         </div>
-    </div>
+    </form>
     );
 }
 
 export default SearchBar;
-

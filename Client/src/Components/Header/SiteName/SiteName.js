@@ -1,7 +1,7 @@
 const SiteName = () => {
     return (
 
-        <h5>Educirea</h5>
+        <a href="/"><h5>Educ Era</h5></a>
 
     );
 }
