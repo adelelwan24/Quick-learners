@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import distinct, func, desc, inspect, or_
+from sqlalchemy import distinct, func, desc, inspect, or_, and_
 from sqlalchemy_utils import EmailType
 
 db = SQLAlchemy()

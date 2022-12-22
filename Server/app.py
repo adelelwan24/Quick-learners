@@ -8,7 +8,7 @@ from flask_bcrypt import Bcrypt
 import os
 
 from models import *
-from VDB import save_to_vdb # , index_query, index_query_name
+from VDB import save_to_vdb, query_vdb_by_user_id, get_closer_queries # , index_query, index_query_name
 
 # Paste your API key here. Remember to not share publicly
 COHERE_API_KEY = 'rImV4bTb4stL21jKzhFZi6PNF5a4Sv5g7FKulaSW'
@@ -46,25 +46,54 @@ db.init_app(app)
 #     print("All tables are created")
 
 
+
+
+
+
+
+
+def update_rec(query_emb , user_id):
+    close_users = get_closer_queries(query_emb)
+
+    for user in close_users:
+        if user_id == user['user_id']:
+            continue
+        users_conn = Rec.query.filter(or_(and_(Rec.user_1_id==user_id, Rec.user_2_id==user['user_id']),
+                                            and_(Rec.user_2_id==user_id, Rec.user_1_id==user['user_id']))).first() 
+        if users_conn != None :
+            try:
+                users_conn.score = (users_conn.score+user['score'])/2 + 5
+                db.session.commit()
+            except Exception as e:
+                print(f"There is an Exception in updating rec: {e}")
+                db.session.rollback()
+        else:
+            try:
+                new_users_conn = Rec( user_1_id=user['user_id'], user_2_id=user_id, score=user['score']) 
+                db.session.add(new_users_conn)
+                db.session.commit()
+            except Exception as e:
+                print(f"There is an Exception in creating rec: {e}")
+                db.session.rollback()
+
 @app.route('/query', methods=["POST"])
 def query():
-    print('========================================================================')
     data = request.get_json()
-    print(data)
     query = data['query']
+    user_id = session['user_id']
     print(query)
     print('========================================================================')
     # create the query embedding
-    xq = co.embed(
+    embed = co.embed(
         texts=[query],
         model='small',
         truncate='LEFT'
     ).embeddings[0]
 
-    print(np.array(xq).shape)
+    print(np.array(embed).shape)
 
     # query, returning the top 5 most similar results
-    res = index.query(xq, top_k=5, include_metadata=True)
+    res = index.query(embed, top_k=5, include_metadata=True)
 
     data = []
     for match in res['matches']:
@@ -74,7 +103,13 @@ def query():
         dic['start'] = match['metadata']['start']
         dic['text'] = match['metadata']['text']
         data.append(dic)
-    print(data)
+
+    if user_id:
+        text = query
+        data_to_vdb = {user_id, embed, text}
+        status = save_to_vdb(data_to_vdb)      # # takes (user_id, embd) --> returns boolen values express succes
+
+    update_rec(embed, user_id)
 
     return jsonify(data)
     
@@ -126,6 +161,12 @@ def login_user():
 
     return jsonify({"logged_in": True})
 
+@app.route("api/logged_in")
+def is_logged_in():
+    if session['user_id']:
+        return jsonify({"logged_in": True})
+    return jsonify({"logged_in": False})
+
 @app.route("/api/logout")
 def log_out():
     session['user_id'] = None
@@ -142,6 +183,70 @@ def get_users():
 
 
     return jsonify([object_as_dict(new) for new in users])
+
+
+
+@app.route("/api/user_rec", methods=["GET"])
+def get_user_rec():
+    user_id = session['user_id']
+    if user_id == None :
+        return jsonify({"logged_in": False,"users_data": []})
+    users_conn = Rec.query.filter(or_(Rec.user_1_id==user_id, Rec.user_2_id==user_id)).order_by(Rec.score.desc()).limit(5)
+    users_data = []
+    for conn in users_conn :
+        dic = {}
+        if conn.user_1_id == user_id :
+            other_user = User.query.filter(User.id == conn.user_2_id).first()
+            dic['name'] = other_user.name
+            dic['username'] = other_user.username
+
+        elif conn.user_2_id == user_id :
+            other_user = User.query.filter(User.id == conn.user_1_id).first()
+            dic['name'] = other_user.name
+            dic['username'] = other_user.username
+        users_data.append(dic)
+    return jsonify({"logged_in": True,"users_data": users_data})
+
+
+@app.route("/api/post_rec", methods=["GET"]) 
+def post_recommindation(): 
+    user_id = session['user_id'] 
+    if user_id == None : 
+        return jsonify({"logged_in": False,"posts": []}) 
+    users = Rec.query.filter(or_(Rec.user_1_id==user_id, Rec.user_2_id==user_id)).order_by(Rec.score.desc()).limit(4) 
+    embeddings = []
+    queries = [] 
+    len_users = len(users) 
+    for i in range(len_users) : 
+        dic = {} 
+        if users[i].user_1_id == user_id : 
+            e, q = query_vdb_by_user_id(users[i].user_2_id, len_users-i) 
+            embeddings += e
+            queries += q
+        elif users[i].user_2_id == user_id : 
+            e, q = query_vdb_by_user_id(users[i].user_1_id, len_users-i) 
+            embeddings += e
+            queries += q
+
+    pinecone.init(PIENCONE_API_KEY_INDEX, environment='us-west1-gcp') 
+    index_name = 'first-index' 
+    # connect to index 
+    index = pinecone.Index(index_name) 
+ 
+    for i in range(len(embeddings)): 
+        res = index.query(embeddings[i], top_k=1, include_metadata=True)
+        data = [] 
+        for match in res['matches']: 
+            print(f"{match['score']:.2f}: {match['metadata']['text']}") 
+            dic = {} 
+            dic['video_id']= match['metadata']['video_id'] 
+            dic['start']= match['metadata']['start'] 
+            dic['text'] = match['metadata']['text']
+            dic['query'] = queries[i]
+            data.append(dic) 
+     
+    return jsonify({"logged_in": True,"posts": data})
+
 
 
 if __name__ == '__main__':
