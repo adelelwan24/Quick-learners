@@ -6,33 +6,33 @@ from flask import Flask, render_template, request, Response, flash, redirect, ur
 from flask_moment import Moment
 from flask_bcrypt import Bcrypt
 import os
+import sys
 
 from models import *
 from VDB import save_to_vdb, query_vdb_by_user_id, get_closer_queries # , index_query, index_query_name
 
-# Paste your API key here. Remember to not share publicly
-COHERE_API_KEY = 'rImV4bTb4stL21jKzhFZi6PNF5a4Sv5g7FKulaSW'
+FORMAT_PRINT_WIDTH = 90
 
-# Create and retrieve a Cohere API key from os.cohere.ai
+COHERE_API_KEY = 'rImV4bTb4stL21jKzhFZi6PNF5a4Sv5g7FKulaSW'
 co = cohere.Client(COHERE_API_KEY)
 
 
 PIENCONE_API_KEY_INDEX = "3d2006de-95b3-4e7d-9ec1-54133c34001e"
-# pinecone_1 = pinecone
-pinecone.init(PIENCONE_API_KEY_INDEX, environment='us-west1-gcp')
-
-
 index_name = 'first-index'
-# connect to index
-index = pinecone.Index(index_name)
 
-# if the index does not exist, we raise assertion
-if index_name not in pinecone.list_indexes():
-    assert False, f"The pinecone index {index_name}: IS NOT VALID"
+PIENCONE_API_KEY_QUERY_INDEX = "f666fbf4-53bd-4f5f-ba64-6656e426ab8c"
+index_query_name = 'query-index'
 
-# if index_query_name not in pinecone.list_indexes():
-#     assert False, f"The pinecone index {index_query_name}: IS NOT VALID"
+
+def Connect_pinecone_index(PIENCONE_API_KEY, INDEX_NAME):
+    pinecone.init(PIENCONE_API_KEY, environment='us-west1-gcp')
+    assert INDEX_NAME  in pinecone.list_indexes(), f"Index {index_name}: Doesn't exsit\nFunction: {sys._getframe(1).f_code.co_name}"
+    connected_index = pinecone.Index(INDEX_NAME)
+    return connected_index
+
     
+query_index = Connect_pinecone_index(PIENCONE_API_KEY_QUERY_INDEX, index_query_name)
+index = Connect_pinecone_index(PIENCONE_API_KEY_INDEX, index_name)
 
 app = Flask(__name__)
 app.config.from_object('config')
@@ -44,12 +44,6 @@ db.init_app(app)
 # with app.app_context():
 #     db.create_all()
 #     print("All tables are created")
-
-
-
-
-
-
 
 
 def update_rec(query_emb , user_id):
@@ -65,7 +59,7 @@ def update_rec(query_emb , user_id):
                 users_conn.score = (users_conn.score+user['score'])/2 + 5
                 db.session.commit()
             except Exception as e:
-                print(f"There is an Exception in updating rec: {e}")
+                print(f"There is an Exception in updating rec: ".center(FORMAT_PRINT_WIDTH, "=") + "\n" + e)
                 db.session.rollback()
         else:
             try:
@@ -73,24 +67,21 @@ def update_rec(query_emb , user_id):
                 db.session.add(new_users_conn)
                 db.session.commit()
             except Exception as e:
-                print(f"There is an Exception in creating rec: {e}")
+                print(f"There is an Exception in creating rec: ".center(FORMAT_PRINT_WIDTH, "=") + "\n" + e)
                 db.session.rollback()
 
 @app.route('/query', methods=["POST"])
 def query():
     data = request.get_json()
     query = data['query']
-    user_id = session['user_id']
-    print(query)
-    print('========================================================================')
+    user_id = session.get('user_id', None)
+
     # create the query embedding
     embed = co.embed(
         texts=[query],
         model='small',
         truncate='LEFT'
     ).embeddings[0]
-
-    print(np.array(embed).shape)
 
     # query, returning the top 5 most similar results
     res = index.query(embed, top_k=5, include_metadata=True)
@@ -109,7 +100,7 @@ def query():
         data_to_vdb = {user_id, embed, text}
         status = save_to_vdb(data_to_vdb)      # # takes (user_id, embd) --> returns boolen values express succes
 
-    update_rec(embed, user_id)
+        update_rec(embed, user_id)
 
     return jsonify(data)
     
@@ -117,9 +108,10 @@ def query():
 @app.route('/api/register', methods=["POST"])
 def insert_user():
     data = request.json
-    hashed_password = bcrypt.generate_password_hash(data["password"])
+    hashed_password = bcrypt.generate_password_hash(data["password"]).decode('UTF-8')
+    print(f"password: {data['password']}\nhashed password: {hashed_password}")
 
-    user_exists = User.query.filter_by(email=data["email"], user_name=data["user_name"]).first() is not None
+    user_exists = User.query.filter_by(email=data["email"], user_name=data["username"]).first() is not None
 
     if user_exists:
         return jsonify({"logged_in": False}), 409
@@ -127,17 +119,18 @@ def insert_user():
     try:
         new = User(
         name = data["name"],
-        user_name = data["user_name"],
+        user_name = data["username"],
         email = data["email"],
         password = hashed_password
         )
         print(new)
         db.session.add(new)
         db.session.commit()
-        print('============================================= mission success =============================================')
+        print(' mission success '.center(FORMAT_PRINT_WIDTH, "="))
     except:
         db.session.rollback()
-        print('============================================= mission failed =============================================')
+        print(f' The called function: {sys._getframe().f_code.co_name} '.center(FORMAT_PRINT_WIDTH, "="))
+        print(f' mission failed '.center(FORMAT_PRINT_WIDTH, "="))
         return jsonify({"logged_in": False})
 
     session["user_id"] = new.id
@@ -161,25 +154,26 @@ def login_user():
 
     return jsonify({"logged_in": True})
 
-@app.route("api/logged_in")
+@app.route("/api/logged_in")
 def is_logged_in():
-    if session['user_id']:
+    if session.get('user_id', None):
         return jsonify({"logged_in": True})
     return jsonify({"logged_in": False})
 
 @app.route("/api/logout")
 def log_out():
-    session['user_id'] = None
+    session.clear()
     return jsonify({'logged_in' : False})
 
 @app.route('/api/get_users')
 def get_users():
     try:
         users = User.query.all()
-        print('============================================= mission success =============================================')
+        print(' mission success '.center(FORMAT_PRINT_WIDTH, "="))
     except:
+        print(f' The called function: {sys._getframe().f_code.co_name} '.center(FORMAT_PRINT_WIDTH, "="))
         db.session.rollback()
-        print('============================================= mission failed =============================================')
+        print(f' mission failed '.center(FORMAT_PRINT_WIDTH, "="))
 
 
     return jsonify([object_as_dict(new) for new in users])
@@ -188,10 +182,10 @@ def get_users():
 
 @app.route("/api/user_rec", methods=["GET"])
 def get_user_rec():
-    user_id = session['user_id']
+    user_id = session.get('user_id', None)
     if user_id == None :
         return jsonify({"logged_in": False,"users_data": []})
-    users_conn = Rec.query.filter(or_(Rec.user_1_id==user_id, Rec.user_2_id==user_id)).order_by(Rec.score.desc()).limit(5)
+    users_conn = Rec.query.filter(or_(Rec.user_1_id==user_id, Rec.user_2_id==user_id)).order_by(Rec.score.desc()).limit(5).all()
     users_data = []
     for conn in users_conn :
         dic = {}
@@ -210,10 +204,10 @@ def get_user_rec():
 
 @app.route("/api/post_rec", methods=["GET"]) 
 def post_recommindation(): 
-    user_id = session['user_id'] 
+    user_id = session.get('user_id', None)
     if user_id == None : 
         return jsonify({"logged_in": False,"posts": []}) 
-    users = Rec.query.filter(or_(Rec.user_1_id==user_id, Rec.user_2_id==user_id)).order_by(Rec.score.desc()).limit(4) 
+    users = Rec.query.filter(or_(Rec.user_1_id==user_id, Rec.user_2_id==user_id)).order_by(Rec.score.desc()).limit(4).all()
     embeddings = []
     queries = [] 
     len_users = len(users) 
@@ -227,15 +221,10 @@ def post_recommindation():
             e, q = query_vdb_by_user_id(users[i].user_1_id, len_users-i) 
             embeddings += e
             queries += q
-
-    pinecone.init(PIENCONE_API_KEY_INDEX, environment='us-west1-gcp') 
-    index_name = 'first-index' 
-    # connect to index 
-    index = pinecone.Index(index_name) 
  
+    data = [] 
     for i in range(len(embeddings)): 
         res = index.query(embeddings[i], top_k=1, include_metadata=True)
-        data = [] 
         for match in res['matches']: 
             print(f"{match['score']:.2f}: {match['metadata']['text']}") 
             dic = {} 
@@ -252,6 +241,4 @@ def post_recommindation():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 2000))
     app.run(host='0.0.0.0', port=port, debug=True)
-
-
 
