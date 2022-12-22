@@ -7,6 +7,7 @@ from flask_moment import Moment
 from flask_bcrypt import Bcrypt
 import os
 import sys
+import sys
 
 from models import *
 # from VDB import save_to_vdb, query_vdb_by_user_id 
@@ -252,8 +253,10 @@ def get_user_rec():
 @app.route("/api/post_rec", methods=["GET"]) 
 def post_recommindation(): 
     user_id = session.get('user_id', None)
+    user_id = session.get('user_id', None)
     if user_id == None : 
         return jsonify({"logged_in": False,"posts": []}) 
+    users = Rec.query.filter(or_(Rec.user_1_id==user_id, Rec.user_2_id==user_id)).order_by(Rec.score.desc()).limit(4).all()
     users = Rec.query.filter(or_(Rec.user_1_id==user_id, Rec.user_2_id==user_id)).order_by(Rec.score.desc()).limit(4).all()
     embeddings = []
     queries = [] 
@@ -268,6 +271,8 @@ def post_recommindation():
             e, q = query_vdb_by_user_id(users[i].user_1_id, len_users-i) 
             embeddings += e
             queries += q
+ 
+    data = [] 
  
     data = [] 
     for i in range(len(embeddings)): 
@@ -288,6 +293,4 @@ def post_recommindation():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 2000))
     app.run(host='0.0.0.0', port=port, debug=True)
-
-
 
