@@ -4,6 +4,8 @@ import {BrowserRouter ,Routes,Route} from 'react-router-dom' //react router
 
 import Home from './Pages/Home/Home';
 import Search from './Pages/Search/Search';
+import SignIn from './Pages/SignIn/SignIn';
+import SignUp from './Pages/SignUp/SignUp';
 
 function App() {
   return (
@@ -11,6 +13,8 @@ function App() {
       <Routes>
           <Route path="/" element={ <Home/>}/>
           <Route path="/search" element={<Search />}/>
+          <Route path="/signin" element={<SignIn />}/>
+          <Route path="/signup" element={<SignUp />}/>
         </Routes>
     </BrowserRouter>
   );

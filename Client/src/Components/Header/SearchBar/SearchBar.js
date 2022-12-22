@@ -8,7 +8,7 @@ const SearchBar = () => {
     const handleSubmit = async (event) => {
         event.preventDefault();
         let {err, resJson} = await Postmethod('/query',{query})
-        console.log(resJson);
+        console.log(err);
         navigate('/search', {state : {query , resJson}});
     }
 
