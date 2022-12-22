@@ -1,27 +1,20 @@
 import SiteName from "../../Components/Header/SiteName/SiteName";
 import  { useState  } from 'react';
 import Postmethod from "../../Methods/PostMethod";
+import { useNavigate } from "react-router-dom";
 
 const SignIn = () => {
+    const navigate = useNavigate();
     const [email , setEmail] = useState('')
     const [password , setPassword] = useState('');
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        let {err, mess} = await Postmethod('/auth/login',{email,password})
-        
-        
-        //svae cart to user cart in data base 
-        //compare my cart to user cart and update and delete local storage
-        //save the result in cart state
-        // let response1 = await fetch('/api/auth/verifyUser');
-        // console.log(response1);
-        // if (response1.ok){
-        //     setUser("true");
-        // }
-        // else{
-        //     setUser("false");
-        // }
+        let {err, resJson} = await Postmethod('/api/login',{email,password})
+        console.log(err)
+        if(resJson.logged_in == true){
+            navigate('/');
+        }
 
             
         

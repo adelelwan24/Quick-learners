@@ -1,6 +1,6 @@
 import { useState , useEffect } from "react"
 
-const useFetch = (url) => {
+const UseFetch = (url) => {
      //loading message 
     const [isPending,setIsPending] = useState(true)
     //ERROR handlin
@@ -41,4 +41,4 @@ const useFetch = (url) => {
     return {data, error, isPending};
 }
 
-export default useFetch ;
+export default UseFetch ;

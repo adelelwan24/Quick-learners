@@ -1,8 +1,11 @@
 import SiteName from "../../Components/Header/SiteName/SiteName";
 import  { useState  } from 'react';
 import Postmethod from "../../Methods/PostMethod";
+import { useNavigate } from "react-router-dom";
+
 
 const SignUp = () => {
+    const navigate = useNavigate();
     const [email , setEmail] = useState('')
     const [name , setName] = useState('')
     const [username , setUsername] = useState('')
@@ -10,8 +13,11 @@ const SignUp = () => {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        let {err, mess} = await Postmethod('/auth/login',{name,username, email,password})
-        
+        let {err, resJson} = await Postmethod('/api/register',{name,username, email,password})
+        console.log(err)
+        if(resJson.logged_in == true){
+            navigate('/');
+        }
         
         //svae cart to user cart in data base 
         //compare my cart to user cart and update and delete local storage
