@@ -2,13 +2,12 @@ import cohere
 import pinecone
 import numpy as np
 
-from flask import Flask, render_template, request, Response, flash, redirect, url_for, jsonify, session
+from flask import Flask, render_template, request, Response, flash, redirect, url_for, jsonify, session, current_app
 from flask_moment import Moment
 from flask_bcrypt import Bcrypt
 import os
 import sys
-import sys
-
+import threading
 from models import *
 # from VDB import save_to_vdb, query_vdb_by_user_id 
 
@@ -48,14 +47,13 @@ db.init_app(app)
 #     db.create_all()
 #     print("All tables are created")
 
-def save_to_vdb(data):
+def save_to_vdb(user_id, embed, text):
     index_query_stats = query_index.describe_index_stats()
 
     # print(f"total_vector_count1:{index_query_stats['total_vector_count']}")
     id = str(index_query_stats['total_vector_count'] + 1)
 
-    meta = {'user_id' : data['user_id'], 'text' : data['text']}
-    embed = data['embed']
+    meta = {'user_id' : user_id, 'text' :text}
     embed = list(embed)
     try:
         query_index.upsert(vectors=[(id, embed, meta)])
@@ -94,8 +92,9 @@ def get_closer_queries(query_emb):
         users.append(dic)
     return users
 
-def update_rec(query_emb , user_id):
-    close_users = get_closer_queries(query_emb)
+# def update_rec(app, embed , user_id):
+def update_rec(embed , user_id):
+    close_users = get_closer_queries(embed)
 
     for user in close_users:
         if user_id == user['user_id']:
@@ -131,6 +130,22 @@ def query():
         truncate='LEFT'
     ).embeddings[0]
 
+    if user_id:
+        text = query
+        # data_to_vdb = {"user_id": user_id, "embed" : embed, "text" : text}
+        thread = threading.Thread(target=save_to_vdb, args=(user_id, embed, text))
+        thread.start()
+
+        with current_app.app_context():
+            # application = current_app._get_current_object()
+            thread2 = threading.Thread(target=update_rec, args=(embed, user_id))
+            thread2.start()
+
+        num_threads = threading.active_count()
+        print(f' Number of active threads: {num_threads} '.center(FORMAT_PRINT_WIDTH, "="))
+
+
+
     # query, returning the top 5 most similar results
     res = index.query(embed, top_k=5, include_metadata=True)
 
@@ -143,12 +158,6 @@ def query():
         dic['text'] = match['metadata']['text']
         data.append(dic)
 
-    if user_id:
-        text = query
-        data_to_vdb = {"user_id": user_id, "embed" : embed, "text" : text}
-        status = save_to_vdb(data_to_vdb)      # # takes (user_id, embd) --> returns boolen values express succes
-
-        update_rec(embed, user_id)
 
     return jsonify(data)
     
