@@ -7,13 +7,15 @@ const SignIn = () => {
     const navigate = useNavigate();
     const [email , setEmail] = useState('')
     const [password , setPassword] = useState('');
-
+    const [message , setMessage] = useState('')
     const handleSubmit = async (event) => {
         event.preventDefault();
         let {err, resJson} = await Postmethod('/api/login',{email,password})
         console.log(err)
         if(resJson.logged_in == true){
             navigate('/');
+        }else{
+            setMessage("either email or password is wrong")
         }
 
             
@@ -56,6 +58,9 @@ const SignIn = () => {
 
             <div className="text-center">
                 <p>Not a member? <a href="/signup">Register</a></p>
+            </div>
+            <div className="text-center">
+                <span  style={{'color':"red" , "fontSize":"12px" }}>{message}</span>
             </div>
         </form>
         </>

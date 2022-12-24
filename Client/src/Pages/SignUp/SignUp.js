@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 const SignUp = () => {
     const navigate = useNavigate();
     const [email , setEmail] = useState('')
+    const [message , setMessage] = useState('')
     const [name , setName] = useState('')
     const [username , setUsername] = useState('')
     const [password , setPassword] = useState('');
@@ -17,6 +18,9 @@ const SignUp = () => {
         console.log(err)
         if(resJson.logged_in == true){
             navigate('/');
+        }
+        else{
+            setMessage("username or email address is taken")
         }
         
         //svae cart to user cart in data base 
@@ -93,6 +97,9 @@ const SignUp = () => {
 
             <div className="text-center">
                 <p>Already a member? <a href="/signin">sign in</a></p>
+            </div>
+            <div className="text-center">
+                <span  style={{'color':"red" , "fontSize":"12px" }}>{message}</span>
             </div>
         </form>
         </>

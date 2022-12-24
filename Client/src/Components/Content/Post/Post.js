@@ -10,7 +10,7 @@ const Post = ({query,video_id,start,text}) => {
         //     </div> */}
 
             <div className="card-body">
-                <h6 className="card-title">query:</h6><span style={{color: "grey"}} className="card-text">{query}</span>
+                <span style={{color: "grey"}} className="card-title">Query: </span><span  className="card-text">{query}</span>
                 {/* <p className="card-text">query: {query}</p> */}
                 <p className="card-text">{text}</p>
             </div>

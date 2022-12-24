@@ -28,6 +28,7 @@ const Signed = () => {
             
             setLoggedin(false)
         })
+        navigate('/signin');
         
     }
 
