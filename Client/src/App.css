@@ -28,15 +28,18 @@
   grid-area: sidebar;
   padding: 10px; 
   max-height: 100%;
-  overflow-x: hidden; 
+  /* overflow-y: hidden;  */
+  overflow-y: scroll;
 }
 
 .content { 
+  /* border-left: 1px solid rgb(50, 68, 84); */
   grid-area: content;
   padding: 10px; 
   max-height: 100%;
   overflow-x: hidden;
   padding: 20px; 
+  overflow-y: scroll;
 }
 .header-me{
   height: 100%;

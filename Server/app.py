@@ -66,7 +66,7 @@ def save_to_vdb(user_id, embed, text):
     return True
 
 def query_vdb_by_user_id(user_id, num):
-    res = query_index.query(ZERO_EMBED, top_k=num,
+    res = query_index.query(ZERO_EMBED, top_k=num+1,
      include_metadata=True, include_values=True,
     filter={'user_id' : {'$eq' : user_id}})
 
@@ -93,29 +93,29 @@ def get_closer_queries(query_emb):
     return users
 
 # def update_rec(app, embed , user_id):
-def update_rec(embed , user_id):
+def update_rec(app ,embed , user_id):
     close_users = get_closer_queries(embed)
-
-    for user in close_users:
-        if user_id == user['user_id']:
-            continue
-        users_conn = Rec.query.filter(or_(and_(Rec.user_1_id==user_id, Rec.user_2_id==user['user_id']),
-                                            and_(Rec.user_2_id==user_id, Rec.user_1_id==user['user_id']))).first() 
-        if users_conn != None :
-            try:
-                users_conn.score = (users_conn.score+user['score'])/2 + 5
-                db.session.commit()
-            except Exception as e:
-                print(f"There is an Exception in updating rec: ".center(FORMAT_PRINT_WIDTH, "=") + "\n" + str(e))
-                db.session.rollback()
-        else:
-            try:
-                new_users_conn = Rec( user_1_id=user['user_id'], user_2_id=user_id, score=user['score']) 
-                db.session.add(new_users_conn)
-                db.session.commit()
-            except Exception as e:
-                print(f"There is an Exception in creating rec: ".center(FORMAT_PRINT_WIDTH, "=") + "\n" + str(e))
-                db.session.rollback()
+    with app.app_context():
+        for user in close_users:
+            if user_id == user['user_id']:
+                continue
+            users_conn = Rec.query.filter(or_(and_(Rec.user_1_id==user_id, Rec.user_2_id==user['user_id']),
+                                                and_(Rec.user_2_id==user_id, Rec.user_1_id==user['user_id']))).first() 
+            if users_conn != None :
+                try:
+                    users_conn.score = (users_conn.score+user['score'])/2 + 5
+                    db.session.commit()
+                except Exception as e:
+                    print(f"There is an Exception in updating rec: ".center(FORMAT_PRINT_WIDTH, "=") + "\n" + str(e))
+                    db.session.rollback()
+            else:
+                try:
+                    new_users_conn = Rec( user_1_id=user['user_id'], user_2_id=user_id, score=user['score']) 
+                    db.session.add(new_users_conn)
+                    db.session.commit()
+                except Exception as e:
+                    print(f"There is an Exception in creating rec: ".center(FORMAT_PRINT_WIDTH, "=") + "\n" + str(e))
+                    db.session.rollback()
 
 @app.route('/query', methods=["POST"])
 def query():
@@ -137,8 +137,8 @@ def query():
         thread.start()
 
         with current_app.app_context():
-            # application = current_app._get_current_object()
-            thread2 = threading.Thread(target=update_rec, args=(embed, user_id))
+            application = current_app._get_current_object()
+            thread2 = threading.Thread(target=update_rec, args=(application ,embed, user_id))
             thread2.start()
 
         num_threads = threading.active_count()
@@ -262,10 +262,8 @@ def get_user_rec():
 @app.route("/api/post_rec", methods=["GET"]) 
 def post_recommindation(): 
     user_id = session.get('user_id', None)
-    user_id = session.get('user_id', None)
     if user_id == None : 
         return jsonify({"logged_in": False,"posts": []}) 
-    users = Rec.query.filter(or_(Rec.user_1_id==user_id, Rec.user_2_id==user_id)).order_by(Rec.score.desc()).limit(4).all()
     users = Rec.query.filter(or_(Rec.user_1_id==user_id, Rec.user_2_id==user_id)).order_by(Rec.score.desc()).limit(4).all()
     embeddings = []
     queries = [] 
@@ -280,8 +278,6 @@ def post_recommindation():
             e, q = query_vdb_by_user_id(users[i].user_1_id, len_users-i) 
             embeddings += e
             queries += q
- 
-    data = [] 
  
     data = [] 
     for i in range(len(embeddings)): 
@@ -302,4 +298,3 @@ def post_recommindation():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 2000))
     app.run(host='0.0.0.0', port=port, debug=True)
-

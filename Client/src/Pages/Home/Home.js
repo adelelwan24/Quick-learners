@@ -3,14 +3,14 @@ import Header from "../../Components/Header/Header";
 import SideBar from "../../Components/SideBar/SideBar";
 const Home = () => {
     return ( 
-    <div class="container-me">
-        <div class="header">
+    <div className="container-me">
+        <div className="header">
             <Header/>
         </div>
-        <div class="sidebar">
+        <div className="sidebar">
             <SideBar/>
         </div>
-        <div class="content">
+        <div className="content">
             <Content/>    
         </div>
     </div>

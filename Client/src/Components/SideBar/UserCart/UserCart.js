@@ -1,10 +1,10 @@
-const UserCart = ({name,usernaem}) => {
+const UserCart = ({name,username}) => {
     return (
     <div className="card-me card" >
         <div>
-            <span className="card-title">name</span>
+            <span className="card-title">{name}</span>
             <br></br>
-            <span style={{color: "grey"}} className="card-text"><span>@</span>username</span>
+            <span style={{color: "grey"}} className="card-text"><span>@</span>{username}</span>
 
             {/* <span className="card-title">{name}</span>
             <br></br>
