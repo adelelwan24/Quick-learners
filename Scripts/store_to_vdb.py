@@ -5,7 +5,7 @@ import numpy as np
 import pinecone
 import time
 
-DEVELOPER_KEY = "AIzaSyBLhYAAmyHCKfHyMu9MahZpa3fuIrCHTgE"
+
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
 
@@ -149,7 +149,6 @@ def captions_to_embeddings(videos_captions):
 # #    [ [{start:--- , video_id:--- , embedding:--- }   ,] ,[  ],[  ] ,]
 #     pass
 def Piencone_indexing(collection):    #    -> [[{}]]  -> [[ {start:--- , video_id:--- , embedding:--- }   ,]]
-    PIENCONE_API_KEY = "3d2006de-95b3-4e7d-9ec1-54133c34001e"
     
     list_dic_data = collection[0]
     shape = np.array(list_dic_data[0]["embedding"]).shape       # (1024,)
